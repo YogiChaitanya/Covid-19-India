@@ -113,36 +113,49 @@ app.put('/districts/:districtId/', async (request, response) => {
 // API 7
 app.get('/states/:stateId/stats/', async (request, response) => {
   const {stateId} = request.params
-  const getSelectedByStateId = `SELECT * FROM state WHERE state_id=${stateId};`
-  const stateWiseFullDetails = await db.get(getSelectedByStateId)
+  const getSelectedByStateQuery = `
+  SELECT
+   SUM(cases),
+   SUM(cured),
+   SUM(active),
+   SUM(deaths) 
+  FROM
+   district 
+  WHERE
+   state_id=${stateId};`
 
-  const convertDBObjectToResponseObject = dbObject => {
-    return {
-      totalCases: dbObject.cases,
-      totalCured: dbObject.cured,
-      totalActive: dbObject.active,
-      totalDeaths: dbObject.deaths,
-    }
-  }
+  const stateWiseFullDetails = await db.get(getSelectedByStateQuery)
 
-  const result = convertDBObjectToResponseObject(stateWiseFullDetails)
-  response.send(result)
+  response.send({
+    totalCases: stateWiseFullDetails['SUM(cases)'],
+    totalCured: stateWiseFullDetails['SUM(cured)'],
+    totalActive: stateWiseFullDetails['SUM(active)'],
+    totalDeaths: stateWiseFullDetails['SUM(deaths)'],
+  })
 })
 
 // API 8
 app.get('/districts/:districtId/details/', async (request, response) => {
   const {districtId} = request.params
-  const getDetailsByDistrictId = `SELECT state_name FROM district WHERE district_id=${districtId};`
-  const findStateName = await db.get(getDetailsByDistrictId)
+  const getDistrictIdQuery = `
+  SELECT
+    state_id
+  FROM
+    district 
+  WHERE
+    district_id=${districtId};`
+  const getDistrictIdQueryResponse = await db.get(getDistrictIdQuery)
 
-  const convertDBObjectToResponseObject = dbObject => {
-    return {
-      stateName: dbObject.state_name,
-    }
-  }
+  const getStateNameQuery = `
+  SELECT
+    state_name as stateName
+  FROM 
+    state
+  WHERE 
+    state_id=${getDistrictIdQueryResponse.state_id};`
 
-  const result = convertDBObjectToResponseObject(findStateName)
-  response.send(result)
+  const getStateNameQueryResponse = await db.get(getStateNameQuery)
+  response.send(getStateNameQueryResponse)
 })
 
 module.exports = app
